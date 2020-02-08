@@ -160,7 +160,7 @@ class KeyEvent: NSObject {
         
         switch event.keyCode {
         case 122: // f1
-            open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
+            open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
             return nil
         case 120: // f2
 
@@ -197,22 +197,26 @@ class KeyEvent: NSObject {
             return nil
 
         case 102: // eiji left
-            if !flags.contains(.maskCommand) {
-                flags.insert(.maskCommand)
-            }
-            return nil
+//            if !flags.contains(.maskCommand) {
+//                flags.insert(.maskCommand)
+//            }
+//            return nil
 //        case 36: // enter -> /|
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
 //        case 42: //  \| -> enter
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
+            break
         case 93:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+            break
         case 94:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+            break
         default:
-            if flags.contains(.maskCommand) {
-                event.flags.insert(.maskCommand)
-            }
+//            if flags.contains(.maskCommand) {
+//                event.flags.insert(.maskCommand)
+//            }
+            break
         }
         
         return Unmanaged.passUnretained(event)
@@ -245,16 +249,19 @@ class KeyEvent: NSObject {
         case 111: // f12
             return nil
         case 102:
-            flags.remove(.maskCommand)
-            return nil
+            break
+//            flags.remove(.maskCommand)
+//            return nil
 //        case 36:
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
 //        case 42:
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
         case 93:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+            break
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
         case 94:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+            break
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
         default:
             break
         }
