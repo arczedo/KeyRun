@@ -12,7 +12,7 @@ import Carbon
 class KeyEvent: NSObject {
     var keyCode: CGKeyCode? = nil
     var isExclusionApp = false
-    let bundleId = Bundle.main.infoDictionary?["CFBundleIdentifier"] as! String
+//    let bundleId = Bundle.main.infoDictionary?["CFBundleIdentifier"] as! String
     override init() {
         super.init()
     }
@@ -160,7 +160,11 @@ class KeyEvent: NSObject {
         
         switch event.keyCode {
         case 122: // f1
-            open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
+            if #available(macOS 10.15, *) {
+                open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+            } else {
+                open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
+            }
             return nil
         case 120: // f2
 
