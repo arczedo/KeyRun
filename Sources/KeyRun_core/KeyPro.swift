@@ -9,27 +9,24 @@
 import Cocoa
 import Carbon
 
-class KeyEvent: NSObject {
+public class KeyEvent: NSObject {
     var keyCode: CGKeyCode? = nil
     var isExclusionApp = false
-    let bundleId = Bundle.main.infoDictionary?["CFBundleIdentifier"] as! String
-    override init() {
+//    let bundleId = Bundle.main.infoDictionary?["CFBundleIdentifier"] as! String
+    public override init() {
         super.init()
     }
-    func start() {
+    public func start() {
 
-        let checkOptionPrompt = kAXTrustedCheckOptionPrompt.takeRetainedValue() as NSString
-        let options: CFDictionary = [checkOptionPrompt: true] as NSDictionary
-        if !AXIsProcessTrustedWithOptions(options) {
+        if !AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary) {
             // アクセシビリティに設定されていない場合、設定されるまでループで待つ
             Timer.scheduledTimer(timeInterval: 1.0,
                                  target: self,
                                  selector: #selector(KeyEvent.watchAXIsProcess(_:)),
                                  userInfo: nil,
                                  repeats: true)
-        }
-        else {
-            self.watch()
+        } else {
+            watch()
         }
     }
     @objc func watchAXIsProcess(_ timer: Timer) {
@@ -38,7 +35,7 @@ class KeyEvent: NSObject {
             print("watchAXIsProcess trusted")
 
             timer.invalidate()
-            self.watch()
+            watch()
         }
     }
     
@@ -133,7 +130,7 @@ class KeyEvent: NSObject {
             }
             return Unmanaged.passUnretained(event)
         default:
-            self.keyCode = nil
+            keyCode = nil
             return Unmanaged.passUnretained(event)
         }
     }
@@ -160,7 +157,11 @@ class KeyEvent: NSObject {
         
         switch event.keyCode {
         case 122: // f1
-            open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
+            if #available(macOS 10.15, *) {
+                open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+            } else {
+                open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
+            }
             return nil
         case 120: // f2
 
@@ -185,7 +186,8 @@ class KeyEvent: NSObject {
             return nil
 
         case 100: // f8
-            break
+            open(URL(fileURLWithPath: "/Applications/Slack.app"))
+            return nil
         case 101: // f9
             break
         case 109: // f10
@@ -197,22 +199,26 @@ class KeyEvent: NSObject {
             return nil
 
         case 102: // eiji left
-            if !flags.contains(.maskCommand) {
-                flags.insert(.maskCommand)
-            }
-            return nil
+//            if !flags.contains(.maskCommand) {
+//                flags.insert(.maskCommand)
+//            }
+//            return nil
 //        case 36: // enter -> /|
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
 //        case 42: //  \| -> enter
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
+            break
         case 93:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+            break
         case 94:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+            break
         default:
-            if flags.contains(.maskCommand) {
-                event.flags.insert(.maskCommand)
-            }
+//            if flags.contains(.maskCommand) {
+//                event.flags.insert(.maskCommand)
+//            }
+            break
         }
         
         return Unmanaged.passUnretained(event)
@@ -245,16 +251,19 @@ class KeyEvent: NSObject {
         case 111: // f12
             return nil
         case 102:
-            flags.remove(.maskCommand)
-            return nil
+            break
+//            flags.remove(.maskCommand)
+//            return nil
 //        case 36:
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
 //        case 42:
 //            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
         case 93:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+            break
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
         case 94:
-            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+            break
+//            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
         default:
             break
         }
@@ -429,13 +438,13 @@ class KeyboardShortcut: NSObject {
     var keyCode: CGKeyCode
     var flags: CGEventFlags
     init(_ event: CGEvent) {
-        self.keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-        self.flags = event.flags
+        keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+        flags = event.flags
         super.init()
     }
     override init() {
-        self.keyCode = 0
-        self.flags = CGEventFlags(rawValue: 0)
+        keyCode = 0
+        flags = CGEventFlags(rawValue: 0)
         super.init()
     }
     init(keyCode: CGKeyCode, flags: CGEventFlags = CGEventFlags()) {
@@ -446,12 +455,12 @@ class KeyboardShortcut: NSObject {
     init?(dictionary: [AnyHashable: Any]) {
         if let keyCodeInt = dictionary["keyCode"] as? Int,
             let eventFlagsInt = dictionary["flags"] as? Int {
-            self.flags = CGEventFlags(rawValue: UInt64(eventFlagsInt))
-            self.keyCode = CGKeyCode(keyCodeInt)
+            flags = CGEventFlags(rawValue: UInt64(eventFlagsInt))
+            keyCode = CGKeyCode(keyCodeInt)
             super.init()
         } else {
-            self.keyCode = 0
-            self.flags = CGEventFlags(rawValue: 0)
+            keyCode = 0
+            flags = CGEventFlags(rawValue: 0)
             super.init()
             return nil
         }
@@ -489,22 +498,22 @@ class KeyboardShortcut: NSObject {
         return flagString + key!
     }
     func isCommandDown() -> Bool {
-        return self.flags.rawValue & CGEventFlags.maskCommand.rawValue != 0 && keyCode != 54 && keyCode != 55
+        return flags.rawValue & CGEventFlags.maskCommand.rawValue != 0 && keyCode != 54 && keyCode != 55
     }
     func isShiftDown() -> Bool {
-        return self.flags.rawValue & CGEventFlags.maskShift.rawValue != 0 && keyCode != 56 && keyCode != 60
+        return flags.rawValue & CGEventFlags.maskShift.rawValue != 0 && keyCode != 56 && keyCode != 60
     }
     func isControlDown() -> Bool {
-        return self.flags.rawValue & CGEventFlags.maskControl.rawValue != 0 && keyCode != 59 && keyCode != 62
+        return flags.rawValue & CGEventFlags.maskControl.rawValue != 0 && keyCode != 59 && keyCode != 62
     }
     func isAlternateDown() -> Bool {
-        return self.flags.rawValue & CGEventFlags.maskAlternate.rawValue != 0 && keyCode != 58 && keyCode != 61
+        return flags.rawValue & CGEventFlags.maskAlternate.rawValue != 0 && keyCode != 58 && keyCode != 61
     }
     func isSecondaryFnDown() -> Bool {
-        return self.flags.rawValue & CGEventFlags.maskSecondaryFn.rawValue != 0 && keyCode != 63
+        return flags.rawValue & CGEventFlags.maskSecondaryFn.rawValue != 0 && keyCode != 63
     }
     func isCapslockDown() -> Bool {
-        return self.flags.rawValue & CGEventFlags.maskAlphaShift.rawValue != 0 && keyCode != 57
+        return flags.rawValue & CGEventFlags.maskAlphaShift.rawValue != 0 && keyCode != 57
     }
     func postEvent() -> Void {
         let loc = CGEventTapLocation.cghidEventTap
@@ -516,12 +525,12 @@ class KeyboardShortcut: NSObject {
         keyUpEvent.post(tap: loc)
     }
     func isCover(_ shortcut: KeyboardShortcut) -> Bool {
-        if shortcut.isCommandDown() && !self.isCommandDown() ||
-            shortcut.isShiftDown() && !self.isShiftDown() ||
-            shortcut.isControlDown() && !self.isControlDown() ||
-            shortcut.isAlternateDown() && !self.isAlternateDown() ||
-            shortcut.isSecondaryFnDown() && !self.isSecondaryFnDown() ||
-            shortcut.isCapslockDown() && !self.isCapslockDown()
+        if shortcut.isCommandDown() && !isCommandDown() ||
+            shortcut.isShiftDown() && !isShiftDown() ||
+            shortcut.isControlDown() && !isControlDown() ||
+            shortcut.isAlternateDown() && !isAlternateDown() ||
+            shortcut.isSecondaryFnDown() && !isSecondaryFnDown() ||
+            shortcut.isCapslockDown() && !isCapslockDown()
         {
             return false
         }
