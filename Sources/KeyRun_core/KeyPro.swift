@@ -9,15 +9,21 @@
 import Cocoa
 import Carbon
 
-public class KeyEvent: NSObject {
+public extension Dictionary where Value: Equatable {
+    subscript(value: Value) -> Key? {
+        first(where: { $1 == value })?.key
+    }
+}
+
+open class KeyEvent: NSObject {
     var keyCode: CGKeyCode? = nil
     var isExclusionApp = false
-//    let bundleId = Bundle.main.infoDictionary?["CFBundleIdentifier"] as! String
+    //    let bundleId = Bundle.main.infoDictionary?["CFBundleIdentifier"] as! String
     public override init() {
         super.init()
     }
     public func start() {
-
+        
         if !AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary) {
             // アクセシビリティに設定されていない場合、設定されるまでループで待つ
             Timer.scheduledTimer(timeInterval: 1.0,
@@ -33,7 +39,7 @@ public class KeyEvent: NSObject {
         print("watchAXIsProcess.\(Date())")
         if AXIsProcessTrusted() {
             print("watchAXIsProcess trusted")
-
+            
             timer.invalidate()
             watch()
         }
@@ -83,11 +89,11 @@ public class KeyEvent: NSObject {
                     return mySelf.eventCallback(proxy: proxy, type: type, event: event)
                 }
                 return Unmanaged.passUnretained(event)
-        },
+            },
             userInfo: observer
-            ) else {
-                print("failed to create event tap")
-                exit(1)
+        ) else {
+            print("failed to create event tap")
+            exit(1)
         }
         let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
@@ -96,48 +102,49 @@ public class KeyEvent: NSObject {
     }
     
     func eventCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-    
+        
         if let mediaKeyEvent = MediaKeyEvent(event) {
             return mediaKeyEvent.keyDown ? mediaKeyDown(mediaKeyEvent) : mediaKeyUp(mediaKeyEvent)
         }
         
         
         switch type {
-        case .flagsChanged:
-            let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-            if modifierMasks[keyCode] == nil {
+            case .flagsChanged:
+                let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+                if modifierMasks[keyCode] == nil {
+                    return Unmanaged.passUnretained(event)
+                }
+                return event.flags.rawValue & modifierMasks[keyCode]!.rawValue != 0 ?
+                    modifierKeyDown(event) : modifierKeyUp(event)
+            case .keyDown:
+                return keyDown(event)
+            case .keyUp:
+                return keyUp(event)
+            case .scrollWheel:
+                if flags.contains(.maskCommand) {
+                    event.flags.insert(.maskCommand)
+                }
                 return Unmanaged.passUnretained(event)
-            }
-            return event.flags.rawValue & modifierMasks[keyCode]!.rawValue != 0 ?
-                modifierKeyDown(event) : modifierKeyUp(event)
-        case .keyDown:
-            return keyDown(event)
-        case .keyUp:
-            return keyUp(event)
-        case .scrollWheel:
-            if flags.contains(.maskCommand) {
-                event.flags.insert(.maskCommand)
-            }
-            return Unmanaged.passUnretained(event)
-        case .leftMouseDown:
-            if flags.contains(.maskCommand) {
-                event.flags.insert(.maskCommand)
-            }
-            return Unmanaged.passUnretained(event)
-        case .leftMouseUp:
-            if flags.contains(.maskCommand) {
-                event.flags.insert(.maskCommand)
-            }
-            return Unmanaged.passUnretained(event)
-        default:
-            keyCode = nil
-            return Unmanaged.passUnretained(event)
+            case .leftMouseDown:
+                print(flags)
+                if flags.contains(.maskCommand) {
+                    event.flags.insert(.maskCommand)
+                }
+                return Unmanaged.passUnretained(event)
+            case .leftMouseUp:
+                if flags.contains(.maskCommand) {
+                    event.flags.insert(.maskCommand)
+                }
+                return Unmanaged.passUnretained(event)
+            default:
+                keyCode = nil
+                return Unmanaged.passUnretained(event)
         }
     }
-
+    
     func open(_ url: URL) {
         NSWorkspace.shared.open(url)
-
+        
         if let app = NSWorkspace.shared.runningApplications
             .filter ({ (app: NSRunningApplication) in app.activationPolicy == NSApplication.ActivationPolicy.regular })
             .filter ({ (app: NSRunningApplication) in app.bundleURL == url}).first
@@ -148,144 +155,169 @@ public class KeyEvent: NSObject {
     
     
     var on = false
+    var shouldAddBackCommand = false
     
+    public var flags = CGEventFlags()
     
-    var flags = CGEventFlags()
-    
-    func keyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    open func keyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         print("kd: \(event.keyCode)")
-        
+        shouldAddBackCommand = false
         switch event.keyCode {
-        case 122: // f1
-            if #available(macOS 10.15, *) {
-                open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-            } else {
-                open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
-            }
-            return nil
-        case 120: // f2
-
-            open(URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"))
-            return nil
-        case 99: // f3
-            open(URL(fileURLWithPath: "/Applications/Safari.app"))
-            return nil
-        case 118: // f4
-            open(URL(fileURLWithPath: "/Applications/Numbers.app"))
-            return nil
+            case 122: // f1
+                if #available(macOS 10.15, *) {
+                    open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+                } else {
+                    open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
+                }
+                return nil
+            case 120: // f2
+                
+                open(URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"))
+                return nil
+            case 99: // f3
+                open(URL(fileURLWithPath: "/Applications/Safari.app"))
+                return nil
+            case 118: // f4
+                open(URL(fileURLWithPath: "/Applications/Numbers.app"))
+                return nil
+                
+            case 96: // f5
+                open(URL(fileURLWithPath: "/Applications/Xcode.app"))
+                return nil
+            case 97: // f6
+                open(URL(fileURLWithPath: "/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app"))
+                return nil
+                
+            case 98: // f7
+                open(URL(fileURLWithPath: "/Applications/MacVim.app"))
+                return nil
+                
+            case 100: // f8
+                open(URL(fileURLWithPath: "/Applications/Slack.app"))
+                return nil
+            case 101: // f9
+                break
+            case 109: // f10
+                break
+            case 103: // f11
+                break
+            case 111: // f12
+                open(URL(fileURLWithPath: "/Users/user0x01/Z/bin/f12"))
+                return nil
+                
+            case 102: // eiji left
+                //            if !flags.contains(.maskCommand) {
+                //                flags.insert(.maskCommand)
+                //            }
+                //            return nil
+                //        case 36: // enter -> /|
+                //            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
+                //        case 42: //  \| -> enter
+                //            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
+                break
+            case 93:
+                //            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+                break
+            case 94:
+                //            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+                break
+                
             
-        case 96: // f5
-            open(URL(fileURLWithPath: "/Applications/Xcode.app"))
-            return nil
-        case 97: // f6
-            open(URL(fileURLWithPath: "/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app"))
-            return nil
-
-        case 98: // f7
-            open(URL(fileURLWithPath: "/Applications/MacVim.app"))
-            return nil
-
-        case 100: // f8
-            open(URL(fileURLWithPath: "/Applications/Slack.app"))
-            return nil
-        case 101: // f9
-            break
-        case 109: // f10
-            break
-        case 103: // f11
-            break
-        case 111: // f12
-            open(URL(fileURLWithPath: "/Users/user0x01/Z/bin/f12"))
-            return nil
-
-        case 102: // eiji left
-//            if !flags.contains(.maskCommand) {
-//                flags.insert(.maskCommand)
-//            }
-//            return nil
-//        case 36: // enter -> /|
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
-//        case 42: //  \| -> enter
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
-            break
-        case 93:
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
-            break
-        case 94:
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
-            break
-        default:
-//            if flags.contains(.maskCommand) {
-//                event.flags.insert(.maskCommand)
-//            }
-            break
+            default:
+                //            if flags.contains(.maskCommand) {
+                //                event.flags.insert(.maskCommand)
+                //            }
+                break
         }
         
         return Unmanaged.passUnretained(event)
     }
-    func keyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-       
+    open func keyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+        
         switch event.keyCode {
-        case 122: // f1
-            return nil
-        case 120: // f2
-            return nil
-        case 99: // f3
-            return nil
-        case 118: // f4
-            return nil
-        case 96: // f5
-            return nil
-        case 97: // f6
-            return nil
-        case 98: // f7
-            return nil
-        case 100: // f8
-            break
-        case 101: // f9
-            break
-        case 109: // f10
-            break
-        case 103: // f11
-            break
-        case 111: // f12
-            return nil
-        case 102:
-            break
-//            flags.remove(.maskCommand)
-//            return nil
-//        case 36:
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
-//        case 42:
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
-        case 93:
-            break
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
-        case 94:
-            break
-//            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
-        default:
-            break
+            case 122: // f1
+                return nil
+            case 120: // f2
+                return nil
+            case 99: // f3
+                return nil
+            case 118: // f4
+                return nil
+            case 96: // f5
+                return nil
+            case 97: // f6
+                return nil
+            case 98: // f7
+                return nil
+            case 100: // f8
+                break
+            case 101: // f9
+                break
+            case 109: // f10
+                break
+            case 103: // f11
+                break
+            case 111: // f12
+                return nil
+            case 102:
+                break
+            //            flags.remove(.maskCommand)
+            //            return nil
+            //        case 36:
+            //            event.setIntegerValueField(.keyboardEventKeycode, value: 42)
+            //        case 42:
+            //            event.setIntegerValueField(.keyboardEventKeycode, value: 36)
+            case 93:
+                break
+            //            event.setIntegerValueField(.keyboardEventKeycode, value: 51)
+            case 94:
+                break
+            //            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
+//            case keyCodeDictionary["H"]!:
+//                if shouldAddBackCommand {
+//                    event.setIntegerValueField(.keyboardEventKeycode, value: 123)
+//                    flags.insert(.maskCommand)
+//                }
+//            case keyCodeDictionary["L"]!:
+//                if flags.contains(.maskCommand) {
+//                    event.setIntegerValueField(.keyboardEventKeycode, value: 124)
+//                    flags.remove(.maskCommand)
+//
+//                }
+//            case keyCodeDictionary["J"]!:
+//                if flags.contains(.maskCommand) {
+//                    event.setIntegerValueField(.keyboardEventKeycode, value: 125)
+//                    flags.remove(.maskCommand)
+//
+//                }
+//            case keyCodeDictionary["K"]!:
+//                if flags.contains(.maskCommand) {
+//                    event.setIntegerValueField(.keyboardEventKeycode, value: 126)
+//                    flags.remove(.maskCommand)
+//
+//                }
+            default:
+                break
         }
         
         return Unmanaged.passUnretained(event)
     }
     func modifierKeyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-
-
+        
+        
         return Unmanaged.passUnretained(event)
     }
     func modifierKeyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-
+        
         return Unmanaged.passUnretained(event)
     }
     func mediaKeyDown(_ mediaKeyEvent: MediaKeyEvent) -> Unmanaged<CGEvent>? {
-
+        
         return Unmanaged.passUnretained(mediaKeyEvent.event)
     }
     func mediaKeyUp(_ mediaKeyEvent: MediaKeyEvent) -> Unmanaged<CGEvent>? {
         print("mediaKeyUp: \(mediaKeyEvent)")
-
+        
         // if hasConvertedEvent(mediaKeyEvent.event, keyCode: CGKeyCode(1000 + mediaKeyEvent.keyCode)) {
         // if let event = getConvertedEvent(mediaKeyEvent.event, keyCode: CGKeyCode(1000 + Int(mediaKeyEvent.keyCode))) {
         // event.post(tap: CGEventTapLocation.cghidEventTap)
@@ -295,75 +327,75 @@ public class KeyEvent: NSObject {
         return Unmanaged.passUnretained(mediaKeyEvent.event)
     }
     func hasConvertedEvent(_ event: CGEvent, keyCode: CGKeyCode? = nil) -> Bool {
-//        let shortcut = event.isMediaEvent ?
-//            KeyboardShortcut(keyCode: 0, flags: MediaKeyEvent(event)!.flags) : KeyboardShortcut(event)
-//
-//        if shortcut.keyCode == eiji {
-//            var event = event
-//            if event.isMediaEvent {
-//                let flags = MediaKeyEvent(event)!.flags
-//                event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)!
-//                event.flags = flags
-//            }
-//            let shortcht = KeyboardShortcut(event)
-//            func getEvent(_ mappings: KeyMapping) -> CGEvent? {
-//                if mappings.output.keyCode == 999 {
-//                    // 999 is Disable
-//                    return nil
-//                }
-//                event.setIntegerValueField(.keyboardEventKeycode, value: Int64(mappings.output.keyCode))
-//                event.flags = CGEventFlags(
-//                    rawValue: (event.flags.rawValue & ~mappings.input.flags.rawValue) | mappings.output.flags.rawValue
-//                )
-//                return event
-//            }
-//            if let mappingList = shortcutList[keyCode ?? shortcht.keyCode] {
-//                if let mappings = hasConvertedEventLog,
-//                    shortcht.isCover(mappings.input) {
-//                    return getEvent(mappings)
-//                }
-//                for mappings in mappingList {
-//                    if shortcht.isCover(mappings.input) {
-//                        return getEvent(mappings)
-//                    }
-//                }
-//            }
-//            return nil
-//        }
+        //        let shortcut = event.isMediaEvent ?
+        //            KeyboardShortcut(keyCode: 0, flags: MediaKeyEvent(event)!.flags) : KeyboardShortcut(event)
+        //
+        //        if shortcut.keyCode == eiji {
+        //            var event = event
+        //            if event.isMediaEvent {
+        //                let flags = MediaKeyEvent(event)!.flags
+        //                event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)!
+        //                event.flags = flags
+        //            }
+        //            let shortcht = KeyboardShortcut(event)
+        //            func getEvent(_ mappings: KeyMapping) -> CGEvent? {
+        //                if mappings.output.keyCode == 999 {
+        //                    // 999 is Disable
+        //                    return nil
+        //                }
+        //                event.setIntegerValueField(.keyboardEventKeycode, value: Int64(mappings.output.keyCode))
+        //                event.flags = CGEventFlags(
+        //                    rawValue: (event.flags.rawValue & ~mappings.input.flags.rawValue) | mappings.output.flags.rawValue
+        //                )
+        //                return event
+        //            }
+        //            if let mappingList = shortcutList[keyCode ?? shortcht.keyCode] {
+        //                if let mappings = hasConvertedEventLog,
+        //                    shortcht.isCover(mappings.input) {
+        //                    return getEvent(mappings)
+        //                }
+        //                for mappings in mappingList {
+        //                    if shortcht.isCover(mappings.input) {
+        //                        return getEvent(mappings)
+        //                    }
+        //                }
+        //            }
+        //            return nil
+        //        }
         
         return false
     }
     
     func getConvertedEvent(_ event: CGEvent, keyCode: CGKeyCode? = nil) -> CGEvent? {
-//        var event = event
-//        if event.isMediaEvent {
-//            let flags = MediaKeyEvent(event)!.flags
-//            event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)!
-//            event.flags = flags
-//        }
-//        let shortcht = KeyboardShortcut(event)
-//        func getEvent(_ mappings: KeyMapping) -> CGEvent? {
-//            if mappings.output.keyCode == 999 {
-//                // 999 is Disable
-//                return nil
-//            }
-//            event.setIntegerValueField(.keyboardEventKeycode, value: Int64(mappings.output.keyCode))
-//            event.flags = CGEventFlags(
-//                rawValue: (event.flags.rawValue & ~mappings.input.flags.rawValue) | mappings.output.flags.rawValue
-//            )
-//            return event
-//        }
-//        if let mappingList = shortcutList[keyCode ?? shortcht.keyCode] {
-//            if let mappings = hasConvertedEventLog,
-//                shortcht.isCover(mappings.input) {
-//                return getEvent(mappings)
-//            }
-//            for mappings in mappingList {
-//                if shortcht.isCover(mappings.input) {
-//                    return getEvent(mappings)
-//                }
-//            }
-//        }
+        //        var event = event
+        //        if event.isMediaEvent {
+        //            let flags = MediaKeyEvent(event)!.flags
+        //            event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)!
+        //            event.flags = flags
+        //        }
+        //        let shortcht = KeyboardShortcut(event)
+        //        func getEvent(_ mappings: KeyMapping) -> CGEvent? {
+        //            if mappings.output.keyCode == 999 {
+        //                // 999 is Disable
+        //                return nil
+        //            }
+        //            event.setIntegerValueField(.keyboardEventKeycode, value: Int64(mappings.output.keyCode))
+        //            event.flags = CGEventFlags(
+        //                rawValue: (event.flags.rawValue & ~mappings.input.flags.rawValue) | mappings.output.flags.rawValue
+        //            )
+        //            return event
+        //        }
+        //        if let mappingList = shortcutList[keyCode ?? shortcht.keyCode] {
+        //            if let mappings = hasConvertedEventLog,
+        //                shortcht.isCover(mappings.input) {
+        //                return getEvent(mappings)
+        //            }
+        //            for mappings in mappingList {
+        //                if shortcht.isCover(mappings.input) {
+        //                    return getEvent(mappings)
+        //                }
+        //            }
+        //        }
         return nil
     }
 }
@@ -542,7 +574,7 @@ func pk(_ key: CGKeyCode) {
     print("\(key): \(keyCodeDictionary[key])")
 }
 
-let keyCodeDictionary: Dictionary<CGKeyCode, String> = [
+public let keyCodeDictionary: Dictionary<CGKeyCode, String> = [
     0: "A",
     1: "S",
     2: "D",
@@ -698,8 +730,8 @@ extension CGEvent {
     var isMediaEvent: Bool {
         return type.rawValue == UInt32(NX_SYSDEFINED)
     }
-    var keyCode: Int {
-        return Int(getIntegerValueField(.keyboardEventKeycode))
+    public var keyCode: CGKeyCode {
+        return CGKeyCode(getIntegerValueField(.keyboardEventKeycode))
     }
     
 }
