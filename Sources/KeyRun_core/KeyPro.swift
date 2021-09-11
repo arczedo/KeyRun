@@ -153,15 +153,10 @@ open class KeyEvent: NSObject {
         }
     }
     
-    
-    var on = false
-    var shouldAddBackCommand = false
-    
     public var flags = CGEventFlags()
     
     open func keyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         print("kd: \(event.keyCode)")
-        shouldAddBackCommand = false
         switch event.keyCode {
             case 122: // f1
                 if #available(macOS 10.15, *) {
@@ -202,8 +197,7 @@ open class KeyEvent: NSObject {
             case 103: // f11
                 break
             case 111: // f12
-                open(URL(fileURLWithPath: "/Users/user0x01/Z/bin/f12"))
-                return nil
+                break
                 
             case 102: // eiji left
                 //            if !flags.contains(.maskCommand) {
@@ -258,6 +252,7 @@ open class KeyEvent: NSObject {
             case 103: // f11
                 break
             case 111: // f12
+                open(URL(fileURLWithPath: "/Users/jpz3562/Z/W/prefs/macOS/zsh/f12/72"))
                 return nil
             case 102:
                 break
@@ -273,29 +268,6 @@ open class KeyEvent: NSObject {
             case 94:
                 break
             //            event.setIntegerValueField(.keyboardEventKeycode, value: 50)
-//            case keyCodeDictionary["H"]!:
-//                if shouldAddBackCommand {
-//                    event.setIntegerValueField(.keyboardEventKeycode, value: 123)
-//                    flags.insert(.maskCommand)
-//                }
-//            case keyCodeDictionary["L"]!:
-//                if flags.contains(.maskCommand) {
-//                    event.setIntegerValueField(.keyboardEventKeycode, value: 124)
-//                    flags.remove(.maskCommand)
-//
-//                }
-//            case keyCodeDictionary["J"]!:
-//                if flags.contains(.maskCommand) {
-//                    event.setIntegerValueField(.keyboardEventKeycode, value: 125)
-//                    flags.remove(.maskCommand)
-//
-//                }
-//            case keyCodeDictionary["K"]!:
-//                if flags.contains(.maskCommand) {
-//                    event.setIntegerValueField(.keyboardEventKeycode, value: 126)
-//                    flags.remove(.maskCommand)
-//
-//                }
             default:
                 break
         }

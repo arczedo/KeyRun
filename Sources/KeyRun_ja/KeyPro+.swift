@@ -23,28 +23,39 @@ class KeyEvent_ja: KeyEvent {
                 event.setIntegerValueField(.keyboardEventKeycode, value: 50)
                 return Unmanaged.passUnretained(event)
             case keyCodeDictionary["H"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 123)
                     event.flags.remove(.maskCommand)
                     return Unmanaged.passUnretained(event)
-
                 }
             case keyCodeDictionary["L"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 124)
                     event.flags.remove(.maskCommand)
                     return Unmanaged.passUnretained(event)
                 }
             case keyCodeDictionary["J"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 125)
                     event.flags.remove(.maskCommand)
                     return Unmanaged.passUnretained(event)
                 }
             case keyCodeDictionary["K"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 126)
                     event.flags.remove(.maskCommand)
+                    return Unmanaged.passUnretained(event)
+                }
+            case keyCodeDictionary["I"]!:
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
+                    event.setIntegerValueField(.keyboardEventKeycode, value: 123)
+                    event.flags.insert(.maskCommand)
+                    return Unmanaged.passUnretained(event)
+                }
+            case keyCodeDictionary[";"]!:
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
+                    event.setIntegerValueField(.keyboardEventKeycode, value: 124)
+                        event.flags.insert(.maskCommand)
                     return Unmanaged.passUnretained(event)
                 }
             default:
@@ -57,7 +68,7 @@ class KeyEvent_ja: KeyEvent {
     }
     
     override func keyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-        let r = super.keyDown(event)
+        let r = super.keyUp(event)
         switch event.keyCode {
             case 102:
                 flags.remove(.maskCommand)
@@ -73,27 +84,37 @@ class KeyEvent_ja: KeyEvent {
                 event.setIntegerValueField(.keyboardEventKeycode, value: 50)
                 return Unmanaged.passUnretained(event)
             case keyCodeDictionary["H"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 123)
                     event.flags.remove(.maskCommand)
                     return Unmanaged.passUnretained(event)
                 }
             case keyCodeDictionary["L"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 124)
                     event.flags.remove(.maskCommand)
                     return Unmanaged.passUnretained(event)
                 }
             case keyCodeDictionary["J"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 125)
                     event.flags.remove(.maskCommand)
                     return Unmanaged.passUnretained(event)
                 }
             case keyCodeDictionary["K"]!:
-                if flags.contains(.maskCommand) {
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
                     event.setIntegerValueField(.keyboardEventKeycode, value: 126)
                     event.flags.remove(.maskCommand)
+                    return Unmanaged.passUnretained(event)
+                }
+            case keyCodeDictionary["I"]!:
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
+                    event.setIntegerValueField(.keyboardEventKeycode, value: 123)
+                    return Unmanaged.passUnretained(event)
+                }
+            case keyCodeDictionary[";"]!:
+                if flags.contains(.maskCommand) || event.flags.contains(.maskCommand) {
+                    event.setIntegerValueField(.keyboardEventKeycode, value: 124)
                     return Unmanaged.passUnretained(event)
                 }
             default:
