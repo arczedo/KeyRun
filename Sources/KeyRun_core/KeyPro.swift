@@ -28,7 +28,7 @@ public extension Dictionary where Value: Equatable {
 open class KeyEvent: NSObject {
 //    @Published var event: (type: CGEventType, event: CGEvent)?
 
-    public var handler: ((_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>?)?
+    public var handler: ((_ type: CGEventType, _ event: CGEvent, _ flags: inout CGEventFlags) -> Unmanaged<CGEvent>?)?
 
     var keyCode: CGKeyCode? = nil
     var isExclusionApp = false
@@ -131,9 +131,9 @@ open class KeyEvent: NSObject {
                 return event.flags.rawValue & modifierMasks[keyCode]!.rawValue != 0 ?
                     modifierKeyDown(event) : modifierKeyUp(event)
             case .keyDown:
-                return handler?(type, event)
+                return handler?(type, event, &flags)
             case .keyUp:
-                return handler?(type, event)
+                return handler?(type, event, &flags)
             case .scrollWheel:
                 if flags.contains(.maskCommand) {
                     event.flags.insert(.maskCommand)
