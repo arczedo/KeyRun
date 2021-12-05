@@ -8,6 +8,16 @@
 
 import Cocoa
 import Carbon
+public func open(_ url: URL) {
+    NSWorkspace.shared.open(url)
+
+    if let app = NSWorkspace.shared.runningApplications
+        .filter ({ (app: NSRunningApplication) in app.activationPolicy == NSApplication.ActivationPolicy.regular })
+        .filter ({ (app: NSRunningApplication) in app.bundleURL == url}).first
+    {
+        app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+    }
+}
 
 public extension Dictionary where Value: Equatable {
     subscript(value: Value) -> Key? {
@@ -16,6 +26,10 @@ public extension Dictionary where Value: Equatable {
 }
 
 open class KeyEvent: NSObject {
+//    @Published var event: (type: CGEventType, event: CGEvent)?
+
+    public var handler: ((_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>?)?
+
     var keyCode: CGKeyCode? = nil
     var isExclusionApp = false
     //    let bundleId = Bundle.main.infoDictionary?["CFBundleIdentifier"] as! String
@@ -79,7 +93,7 @@ open class KeyEvent: NSObject {
         }
         let observer = UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque())
         guard let eventTap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
+            tap: .cghidEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: CGEventMask(eventMask),
@@ -117,16 +131,16 @@ open class KeyEvent: NSObject {
                 return event.flags.rawValue & modifierMasks[keyCode]!.rawValue != 0 ?
                     modifierKeyDown(event) : modifierKeyUp(event)
             case .keyDown:
-                return keyDown(event)
+                return handler?(type, event)
             case .keyUp:
-                return keyUp(event)
+                return handler?(type, event)
             case .scrollWheel:
                 if flags.contains(.maskCommand) {
                     event.flags.insert(.maskCommand)
                 }
                 return Unmanaged.passUnretained(event)
             case .leftMouseDown:
-                print(flags)
+//                print(flags)
                 if flags.contains(.maskCommand) {
                     event.flags.insert(.maskCommand)
                 }
@@ -137,27 +151,21 @@ open class KeyEvent: NSObject {
                 }
                 return Unmanaged.passUnretained(event)
             default:
+                print(type)
                 keyCode = nil
                 return Unmanaged.passUnretained(event)
         }
     }
     
-    func open(_ url: URL) {
-        NSWorkspace.shared.open(url)
-        
-        if let app = NSWorkspace.shared.runningApplications
-            .filter ({ (app: NSRunningApplication) in app.activationPolicy == NSApplication.ActivationPolicy.regular })
-            .filter ({ (app: NSRunningApplication) in app.bundleURL == url}).first
-        {
-            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
-        }
-    }
-    
+
     public var flags = CGEventFlags()
     
     open func keyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         print("kd: \(event.keyCode)")
         switch event.keyCode {
+            case 53: // esc
+                open(URL(fileURLWithPath: "/Applications/L.app"))
+                return nil
             case 122: // f1
                 if #available(macOS 10.15, *) {
                     open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
