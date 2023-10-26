@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.8
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -21,10 +21,10 @@ let package = Package(
         .target(
             name: "KeyRun_core",
             dependencies: []),
-        .target(
+        .executableTarget(
             name: "KeyRun_origin",
             dependencies: ["KeyRun_core"]),
-        .target(
+        .executableTarget(
             name: "KeyRun_ja",
             dependencies: ["KeyRun_core"]),
         .testTarget(

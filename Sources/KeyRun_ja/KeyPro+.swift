@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreGraphics
 import KeyRun_core
 class KeyEvent_ja: KeyEvent {
     override func keyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
